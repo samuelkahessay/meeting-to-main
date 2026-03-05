@@ -9,9 +9,11 @@ echo "=== meeting-to-main ==="
 echo ""
 
 # Step 1: WorkIQ extraction (or mock)
+# Use live WorkIQ by setting WORKIQ_LIVE=true:
+#   WORKIQ_LIVE=true ./extraction/extract-prd.sh "my meeting query"
 echo "[1/3] Fetching meeting data via WorkIQ..."
-if command -v workiq &>/dev/null && workiq mcp --health 2>/dev/null; then
-  WORKIQ_OUTPUT=$(workiq mcp query "Get transcript from '${1:-Product Sync}'")
+if [ "${WORKIQ_LIVE:-}" = "true" ]; then
+  WORKIQ_OUTPUT=$(npx tsx "$PROJECT_ROOT/extraction/workiq-client.ts" "${1:-Product Sync}")
   echo "      Using live WorkIQ MCP"
 else
   WORKIQ_OUTPUT=$(cat "$PROJECT_ROOT/mocks/workiq-response.txt")
