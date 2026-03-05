@@ -1,0 +1,193 @@
+{
+  "source": "microsoft_teams_meeting",
+  "meeting": {
+    "title": "Product Sync — Sprint 14 Planning",
+    "date": "2026-03-03T14:00:00Z",
+    "duration_minutes": 32,
+    "participants": ["Alice Chen (PM)", "Bob Rivera (Eng)", "Carol Wu (Design)"],
+    "recording_available": true
+  },
+  "transcript": [
+    {
+      "speaker": "Alice Chen (PM)",
+      "timestamp": "00:00:12",
+      "text": "Alright, let's get started. We've got Sprint 14 kicking off tomorrow and I want to lock down the scope for the Notification Preferences API today. Bob, Carol, thanks for jumping on."
+    },
+    {
+      "speaker": "Bob Rivera (Eng)",
+      "timestamp": "00:00:28",
+      "text": "Yeah, happy to. I've been looking at the rough spec you shared — the CRUD endpoints for user notification preferences. I think we can get a solid v1 out this sprint if we keep it tight."
+    },
+    {
+      "speaker": "Carol Wu (Design)",
+      "timestamp": "00:00:41",
+      "text": "Same here. I've got the settings panel mocks ready, but I need to know what the API shape looks like before I finalize the toggle states."
+    },
+    {
+      "speaker": "Alice Chen (PM)",
+      "timestamp": "00:00:55",
+      "text": "Perfect. So let's walk through it. At the core, we need standard CRUD — create a preference, read it back, update it, delete it. Each preference ties to a user ID and a notification channel like email, SMS, or push."
+    },
+    {
+      "speaker": "Bob Rivera (Eng)",
+      "timestamp": "00:01:14",
+      "text": "Makes sense. I'm thinking we go with Express and TypeScript for this. We've been standardizing on that across services anyway. And for testing, Vitest — it's faster than Jest and the DX is better."
+    },
+    {
+      "speaker": "Alice Chen (PM)",
+      "timestamp": "00:01:30",
+      "text": "Works for me. Carol, any concerns on the tech side?"
+    },
+    {
+      "speaker": "Carol Wu (Design)",
+      "timestamp": "00:01:35",
+      "text": "No, that's fine. I just care about the response shape. Can we make sure the GET response includes an enabled boolean and the channel type? My toggles map one-to-one to those."
+    },
+    {
+      "speaker": "Bob Rivera (Eng)",
+      "timestamp": "00:01:49",
+      "text": "Absolutely. I'm thinking the preference object looks something like — id, userId, channel, enabled, createdAt, updatedAt. Clean and flat."
+    },
+    {
+      "speaker": "Alice Chen (PM)",
+      "timestamp": "00:02:05",
+      "text": "Good. Now there's one more thing from the product side. We need a batch update endpoint. The settings page lets users toggle multiple channels at once, so we need to support updating up to 500 preferences in a single request."
+    },
+    {
+      "speaker": "Bob Rivera (Eng)",
+      "timestamp": "00:02:22",
+      "text": "Five hundred? That's — I mean, okay, but are we actually expecting anyone to hit that limit?"
+    },
+    {
+      "speaker": "Alice Chen (PM)",
+      "timestamp": "00:02:29",
+      "text": "Probably not day one, but enterprise accounts could have hundreds of notification types. I'd rather set the contract now than change it later."
+    },
+    {
+      "speaker": "Bob Rivera (Eng)",
+      "timestamp": "00:02:40",
+      "text": "Fair enough. I'll cap it at 500 and return a 400 if someone tries to go over. The batch endpoint can be a PATCH to /preferences/batch with an array of partial updates."
+    },
+    {
+      "speaker": "Carol Wu (Design)",
+      "timestamp": "00:02:56",
+      "text": "That works for the frontend. We'll just collect all the dirty toggles and send them in one shot."
+    },
+    {
+      "speaker": "Alice Chen (PM)",
+      "timestamp": "00:03:08",
+      "text": "Great. Now the other big piece — webhooks. When a user changes their preferences, downstream services need to know. Think email service, push notification gateway, that kind of thing."
+    },
+    {
+      "speaker": "Bob Rivera (Eng)",
+      "timestamp": "00:03:24",
+      "text": "Okay, so we're talking about firing a webhook on every preference change? Do we need delivery guarantees here? Like, a retry queue or—"
+    },
+    {
+      "speaker": "Alice Chen (PM)",
+      "timestamp": "00:03:33",
+      "text": "No. Let's keep it fire-and-forget for v1. We post to the registered webhook URL and move on. If it fails, it fails. We can add retry logic in v2."
+    },
+    {
+      "speaker": "Bob Rivera (Eng)",
+      "timestamp": "00:03:45",
+      "text": "That simplifies things a lot actually. I'll just do an async HTTP POST after the preference write completes. No queue, no dead letter, just send and forget."
+    },
+    {
+      "speaker": "Carol Wu (Design)",
+      "timestamp": "00:03:59",
+      "text": "Quick question — will the webhook payload include the full preference object or just the ID?"
+    },
+    {
+      "speaker": "Bob Rivera (Eng)",
+      "timestamp": "00:04:07",
+      "text": "I'd say full object. It's small enough and it saves the consumer from making a callback to fetch it."
+    },
+    {
+      "speaker": "Alice Chen (PM)",
+      "timestamp": "00:04:15",
+      "text": "Agreed. Full object in the webhook payload. Now let's talk about what we're not doing this sprint, because I know scope creep is going to come up."
+    },
+    {
+      "speaker": "Bob Rivera (Eng)",
+      "timestamp": "00:04:28",
+      "text": "Oh, I already have a list. No auth layer, right? We're assuming that's handled upstream by the API gateway."
+    },
+    {
+      "speaker": "Alice Chen (PM)",
+      "timestamp": "00:04:36",
+      "text": "Correct. No auth. No database either — we're doing in-memory storage for v1. Bob, you mentioned a repository pattern?"
+    },
+    {
+      "speaker": "Bob Rivera (Eng)",
+      "timestamp": "00:04:47",
+      "text": "Yeah, I want to use a repository pattern so we can swap in Postgres or DynamoDB later without touching the route handlers. For now it's just a Map in memory, but the interface stays the same."
+    },
+    {
+      "speaker": "Carol Wu (Design)",
+      "timestamp": "00:05:02",
+      "text": "Does that mean data resets every time the server restarts?"
+    },
+    {
+      "speaker": "Bob Rivera (Eng)",
+      "timestamp": "00:05:08",
+      "text": "Yep. That's fine for dev and testing. We'll persist for real in the next sprint."
+    },
+    {
+      "speaker": "Alice Chen (PM)",
+      "timestamp": "00:05:16",
+      "text": "And just to be explicit — no retry queue for webhooks, no WebSocket support, no notification categories or grouping. Those are all v2 or later."
+    },
+    {
+      "speaker": "Bob Rivera (Eng)",
+      "timestamp": "00:05:29",
+      "text": "Someone's going to ask about WebSockets, I guarantee it."
+    },
+    {
+      "speaker": "Alice Chen (PM)",
+      "timestamp": "00:05:34",
+      "text": "And we'll point them to the roadmap. For now, REST plus webhooks covers the use case. Carol, anything from the design side we're missing?"
+    },
+    {
+      "speaker": "Carol Wu (Design)",
+      "timestamp": "00:05:46",
+      "text": "I think we're good. As long as the API returns consistent shapes and the batch endpoint works, I can build the settings UI against it. One thing — can we make sure error responses also have a consistent format? Like a standard error object with a message and code."
+    },
+    {
+      "speaker": "Bob Rivera (Eng)",
+      "timestamp": "00:06:01",
+      "text": "Yeah, I'll set up a global error handler middleware. Every error response will have the same shape — status, message, and an optional details array for validation errors."
+    },
+    {
+      "speaker": "Alice Chen (PM)",
+      "timestamp": "00:06:15",
+      "text": "Alright, I think we've got a clean scope. Let me recap: CRUD endpoints for preferences, batch update up to 500, fire-and-forget webhooks, Express plus TypeScript plus Vitest, in-memory storage with repository pattern, and explicit no-gos on auth, database, retry queue, WebSockets, and categories. Everyone aligned?"
+    },
+    {
+      "speaker": "Bob Rivera (Eng)",
+      "timestamp": "00:06:38",
+      "text": "Aligned. I'll have the project scaffolded by end of day and the CRUD endpoints up by Wednesday."
+    },
+    {
+      "speaker": "Carol Wu (Design)",
+      "timestamp": "00:06:47",
+      "text": "Aligned on my end too. I'll finalize the settings panel mocks to match the API shape Bob described. Let's sync again Thursday to check progress."
+    }
+  ],
+  "action_items": [
+    "Ship notification preferences API with CRUD + batch + webhooks",
+    "Use Express + TypeScript, Vitest for testing",
+    "In-memory storage with repository pattern for v1",
+    "Batch endpoint capped at 500 preferences per request",
+    "Webhook delivery is fire-and-forget, log failures",
+    "Response envelope: data field for success, error field for failures"
+  ],
+  "key_decisions": [
+    "No database for v1 — in-memory Map is sufficient",
+    "No auth — API sits behind gateway, user ID as path parameter",
+    "Webhook delivery is fire-and-forget, no retry queue",
+    "REST over WebSocket for initial version",
+    "No categories — flat preference model, categories are UI concern",
+    "Cap batch at 500, return 400 if exceeded"
+  ]
+}
