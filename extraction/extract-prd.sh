@@ -14,7 +14,7 @@ if command -v workiq &>/dev/null && workiq mcp --health 2>/dev/null; then
   WORKIQ_OUTPUT=$(workiq mcp query "Get transcript from '${1:-Product Sync}'")
   echo "      Using live WorkIQ MCP"
 else
-  WORKIQ_OUTPUT=$(cat "$PROJECT_ROOT/mocks/workiq-response.json")
+  WORKIQ_OUTPUT=$(cat "$PROJECT_ROOT/mocks/workiq-response.txt")
   echo "      Using mock WorkIQ data"
 fi
 

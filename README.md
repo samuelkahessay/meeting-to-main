@@ -10,8 +10,8 @@ Takes a meeting transcript (via [WorkIQ](https://workiq.com) MCP), extracts a st
 Meeting Transcript (WorkIQ) -> PRD Extraction (Claude) -> Pipeline Trigger (GitHub Issue)
 ```
 
-1. **Mock/WorkIQ layer** (`mocks/`) — Static meeting transcript fixture, or live WorkIQ MCP call
-2. **Extraction layer** (`extraction/`) — Claude transforms transcript into a validated PRD
+1. **Mock/WorkIQ layer** (`mocks/`) — Static meeting data (transcript + WorkIQ prose summary), or live WorkIQ MCP call
+2. **Extraction layer** (`extraction/`) — Claude transforms WorkIQ's meeting summary into a validated PRD
 3. **Trigger layer** (`trigger/`) — Creates a GitHub issue in prd-to-prod with `/decompose`
 
 ## Quick start
@@ -23,7 +23,7 @@ Meeting Transcript (WorkIQ) -> PRD Extraction (Claude) -> Pipeline Trigger (GitH
 ./extraction/extract-prd.sh
 
 # Or run each step manually:
-cat mocks/workiq-response.json                    # 1. View meeting data
+cat mocks/workiq-response.txt                     # 1. View meeting data
 claude --print "$(cat extraction/prompt.md)"       # 2. Extract PRD
 bash trigger/push-to-pipeline.sh generated-prd.md # 3. Trigger pipeline
 ```
@@ -33,8 +33,8 @@ bash trigger/push-to-pipeline.sh generated-prd.md # 3. Trigger pipeline
 ```
 meeting-to-main/
 ├── mocks/                        # WorkIQ mock layer
-│   ├── transcript.json           # Realistic 30-turn meeting transcript
-│   └── workiq-response.json      # Full WorkIQ MCP response envelope
+│   ├── transcript.json           # Realistic 31-turn meeting transcript
+│   └── workiq-response.txt       # WorkIQ prose summary of the meeting
 ├── extraction/                   # PRD extraction layer
 │   ├── extract-prd.sh            # Main orchestrator (entry point)
 │   ├── prompt.md                 # LLM prompt for transcript -> PRD
@@ -56,7 +56,7 @@ meeting-to-main/
 
 | Component | Demo | Production |
 |-----------|------|------------|
-| Meeting transcript | Static fixture | Live via WorkIQ MCP |
+| Meeting data | Static fixtures (transcript + prose summary) | Live via WorkIQ MCP |
 | PRD extraction (Claude) | Real | Real |
 | PRD validation | Real | Real |
 | GitHub issue creation | Real | Real |
