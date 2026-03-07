@@ -22,9 +22,26 @@ fi
 
 # Step 2: PRD extraction via LLM
 echo "[2/3] Extracting PRD from meeting transcript..."
-PROMPT=$(cat "$PROJECT_ROOT/extraction/prompt.md")
-PROMPT="${PROMPT//\{workiq_output\}/$WORKIQ_OUTPUT}"
-claude --print "$PROMPT" > "$PROJECT_ROOT/generated-prd.md"
+
+# Assemble prompt safely using python to avoid bash expansion issues with $, \, etc.
+FULL_PROMPT=$(python3 -c "
+import sys
+prompt = open('$PROJECT_ROOT/extraction/prompt.md').read()
+workiq = sys.stdin.read()
+print(prompt.replace('{workiq_output}', workiq))
+" <<< "$WORKIQ_OUTPUT")
+
+# Use OpenRouter API (Claude Sonnet 4.6) instead of claude CLI to avoid nesting issues
+ESCAPED_PROMPT=$(printf '%s' "$FULL_PROMPT" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')
+API_RESPONSE=$(curl -s https://openrouter.ai/api/v1/chat/completions \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"model\": \"anthropic/claude-sonnet-4-6\",
+    \"messages\": [{\"role\": \"user\", \"content\": $ESCAPED_PROMPT}]
+  }")
+
+printf '%s' "$API_RESPONSE" | python3 -c 'import sys,json; print(json.loads(sys.stdin.read())["choices"][0]["message"]["content"])' > "$PROJECT_ROOT/generated-prd.md"
 echo "      PRD written to generated-prd.md"
 
 # Validate
@@ -37,8 +54,8 @@ fi
 echo "      PRD validation passed"
 
 # Step 3: Trigger pipeline
-echo "[3/3] Pushing PRD to prd-to-prod pipeline..."
+echo "[3/3] Creating pipeline repo and triggering /decompose..."
 bash "$PROJECT_ROOT/trigger/push-to-pipeline.sh" "$PROJECT_ROOT/generated-prd.md"
 
 echo ""
-echo "=== Done. Watch prd-to-prod for pipeline activity. ==="
+echo "=== Done. Watch the new repo for pipeline activity. ==="
