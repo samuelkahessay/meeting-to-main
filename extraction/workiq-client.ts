@@ -91,6 +91,7 @@ async function main() {
 
   // Pick the most relevant tool — prefer explicit meeting/query tools
   const preferredNames = [
+    "ask_work_iq",
     "query",
     "search_meetings",
     "get_meeting_transcript",
@@ -108,13 +109,21 @@ async function main() {
   // Fetch meeting data
   const result = (await rpc("tools/call", {
     name: tool.name,
-    arguments: { query },
+    arguments: { question: query },
   })) as { content: Array<{ type: string; text: string }> };
 
   // Extract prose from MCP content blocks
+  // ask_work_iq returns JSON with a "response" field; other tools may return plain text
   const prose = result.content
     .filter((c) => c.type === "text")
-    .map((c) => c.text)
+    .map((c) => {
+      try {
+        const parsed = JSON.parse(c.text);
+        return parsed.response ?? c.text;
+      } catch {
+        return c.text;
+      }
+    })
     .join("\n\n");
 
   if (!prose.trim()) {
