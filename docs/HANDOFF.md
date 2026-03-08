@@ -1,5 +1,70 @@
 # Agent Handoff — meeting-to-main
 
+## Pause Checkpoint — 2026-03-08
+
+**Current status:** work is intentionally paused. The latest fresh smoke proved bootstrap still works with the local template snapshot, but the lane is currently blocked by GitHub Copilot quota before decomposition can complete.
+
+### Latest smoke result
+
+- **Repo:** `samuelkahessay/pipeline-smoke-canary-smoke-20260308151418`
+- **Bootstrap:** succeeded
+  - repo created from the local `prd-to-prod-template` snapshot
+  - branch protection, secrets, variables, and lock-file compile all completed
+  - root PRD issue `#1` was created and `/decompose` was triggered
+- **Failure point:** `PRD Decomposer` failed in the Copilot agent step before creating child issues
+- **Concrete blocker:** agent runtime returned `402 You have no quota`
+- **Implication:** the current stop condition is external quota, not a newly proven workflow-routing regression
+
+### Repo state at pause
+
+- **`meeting-to-main`**
+  - `origin/main` already includes `ac253b5` (`fix: harden smoke bootstrap flow`)
+  - one local uncommitted change remains in `trigger/push-to-pipeline.sh`
+  - that change only updates the default `PIPELINE_APP_PRIVATE_KEY_FILE` fallback from the TCC-blocked `~/Downloads/...pem` path to the readable config path: `$HOME/.config/prd-to-prod/prd-to-prod-pipeline.2026-03-02.private-key.pem`
+- **`prd-to-prod-template`**
+  - working tree is clean
+  - branch is **ahead of `origin/main` by 4 local commits**
+  - unpushed commits:
+    - `8426070` `fix: target child issue activation and dispatch`
+    - `eb27f56` `chore: upgrade gh-aw lockfiles to v0.56.0`
+    - `f6a322d` `chore: refresh agentics maintenance workflow`
+    - `d3cb5cb` `test: add studio e2e coverage`
+
+### Closed loops
+
+- The App private key was moved out of `~/Downloads` and the stale `Downloads` copy was removed.
+- Canonical readable key path is now `/Users/skahessay/.config/prd-to-prod/prd-to-prod-pipeline.2026-03-02.private-key.pem`.
+- No local smoke command is still running.
+- No PR was opened in the latest smoke repo, so there is no partially verified review/merge lane to clean up.
+
+### Open loops left intentionally documented
+
+- The latest smoke repo still exists for evidence: `samuelkahessay/pipeline-smoke-canary-smoke-20260308151418`
+- Issue `#2` in that repo is the generated failure issue: `[aw] PRD Decomposer failed (pre-agent)`
+- The 4 template commits are local only and have **not** been pushed
+- The key-path fallback edit in `meeting-to-main` has **not** been committed
+
+### Exact next step when resuming
+
+1. Restore Copilot quota or switch to credentials with quota.
+2. Decide whether to keep and commit the local `meeting-to-main/trigger/push-to-pipeline.sh` key-path fallback change.
+3. Decide whether to push the 4 local `prd-to-prod-template` commits before further smoke runs.
+4. Rerun one fresh smoke using:
+
+```bash
+PIPELINE_TEMPLATE_SOURCE_DIR=/Users/skahessay/Documents/Projects/active/prd-to-prod-template \
+PIPELINE_SMOKE_TIMEOUT_SECONDS=1800 \
+/Users/skahessay/Documents/Projects/active/meeting-to-main/trigger/smoke-pipeline.sh
+```
+
+5. If the quota issue is resolved and the run advances past decomposition, continue validating:
+   - child issue creation
+   - child `pipeline` activation
+   - first PR creation
+   - verdict comment
+   - formal review
+   - auto-merge
+
 **Date:** 2026-03-08
 **Status:** PRD extraction, repo bootstrap, and live deploy are verified; the March 7, 2026 autonomous merge lane was not fully hands-off. This repo now contains the v1 autonomy hardening changes and smoke-run tooling.
 **Last commit:** `0df7930` on `main` before the current hardening pass
