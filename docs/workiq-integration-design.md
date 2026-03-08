@@ -1,9 +1,9 @@
 # meeting-to-main: WorkIQ Integration Design
 
-> Meeting transcript in. Merged PR out. No human touching a keyboard.
+> Meeting transcript in. PRD out. The design target is a hands-off merge lane, but the March 7, 2026 live run still required manual merges before the current hardening pass.
 
 **Date:** 2026-03-04 (design) · 2026-03-08 (deployed)
-**Status:** Implemented, verified, and live on Vercel
+**Status:** Implemented and live on Vercel; autonomy hardening for the review/merge lane is now in progress
 **Live proof:** https://team-availability-service.vercel.app
 
 ---
