@@ -4,9 +4,11 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SMOKE_PRD_FILE="${1:-$PROJECT_ROOT/trigger/smoke-prd.md}"
 PIPELINE_BOT_LOGIN="${PIPELINE_BOT_LOGIN:-prd-to-prod-pipeline}"
+PIPELINE_OWNER="${PIPELINE_OWNER:-samuelkahessay}"
 SMOKE_TIMEOUT_SECONDS="${PIPELINE_SMOKE_TIMEOUT_SECONDS:-1800}"
 PIPELINE_REPO_SUFFIX="${PIPELINE_REPO_SUFFIX:-smoke-$(date -u +%Y%m%d%H%M%S)}"
 DELETE_REPO="${PIPELINE_DELETE_SMOKE_REPO:-false}"
+DELETE_OLD_SMOKE_REPOS="${PIPELINE_DELETE_OLD_SMOKE_REPOS:-false}"
 START_ISO="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 log() {
@@ -120,6 +122,24 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+
+cleanup_previous_smoke_repos() {
+  local smoke_repo_prefix
+  local old_repo
+
+  [ "$DELETE_OLD_SMOKE_REPOS" = "true" ] || return 0
+
+  smoke_repo_prefix="${PIPELINE_SMOKE_REPO_PREFIX:-pipeline-smoke-canary-smoke-}"
+  log "Cleaning up previous smoke repos for $PIPELINE_OWNER (prefix: $smoke_repo_prefix)..."
+  while IFS= read -r old_repo; do
+    [ -z "$old_repo" ] && continue
+    log "  Deleting old smoke repo: $old_repo"
+    gh repo delete "$PIPELINE_OWNER/$old_repo" --yes 2>/dev/null || true
+  done < <(gh repo list "$PIPELINE_OWNER" --limit 100 --json name \
+    --jq ".[].name | select(startswith(\"$smoke_repo_prefix\"))")
+}
+
+cleanup_previous_smoke_repos
 
 if [ -n "${PIPELINE_TEMPLATE_SOURCE_DIR:-}" ]; then
   [ -d "$PIPELINE_TEMPLATE_SOURCE_DIR" ] || fail "PIPELINE_TEMPLATE_SOURCE_DIR does not exist: $PIPELINE_TEMPLATE_SOURCE_DIR"

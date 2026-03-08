@@ -5,11 +5,23 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Source ~/.env and auto-export all vars so child processes (push-to-pipeline.sh) inherit them
+if [ -f "$HOME/.env" ]; then
+  set -a
+  source "$HOME/.env"
+  set +a
+fi
+
 echo "=== meeting-to-main ==="
 echo ""
 
-# Platform constraints — controls which tech stacks the PRD can use
-DEPLOY_PLATFORM="${DEPLOY_PLATFORM:-Vercel}"
+# This extractor currently targets the Vercel bootstrap shape only.
+REQUESTED_DEPLOY_PLATFORM="${DEPLOY_PLATFORM:-Vercel}"
+if [ "$REQUESTED_DEPLOY_PLATFORM" != "Vercel" ]; then
+  echo "ERROR: DEPLOY_PLATFORM=$REQUESTED_DEPLOY_PLATFORM is not supported. meeting-to-main currently targets Vercel only." >&2
+  exit 1
+fi
+DEPLOY_PLATFORM="Vercel"
 ALLOWED_STACKS="${ALLOWED_STACKS:-"- Node.js + TypeScript + Express (API routes or standalone server)
 - Node.js + TypeScript + Next.js (full-stack with React)
 - Node.js + TypeScript + Hono (lightweight API)

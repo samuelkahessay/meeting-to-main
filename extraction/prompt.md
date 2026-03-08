@@ -30,6 +30,10 @@ Note the mapping in the Overview section so the intent is preserved.
    Express/Hono app as the default export (for Vercel serverless deployment).
    The app logic lives in `src/app.ts`, and `src/server.ts` imports it and
    calls `.listen()` for local development only.
+9. The first feature MUST include a `vercel.json` with a rewrite rule that
+   routes all `/api/*` requests to the Express serverless function:
+   `{ "rewrites": [{ "source": "/api/(.*)", "destination": "/api" }] }`
+   This is required so Express handles its own routing for all API paths.
 
 ## Output Schema
 
@@ -55,6 +59,7 @@ Note the mapping in the Overview section so the intent is preserved.
 - Platform: {deploy_platform}
 - Entrypoint: `api/index.ts` — exports the app as default export (no `.listen()` call)
 - Server: `src/server.ts` — imports the app and calls `.listen()` for local dev
+- Routing: `vercel.json` rewrites `/api/*` to `/api` so Express handles all API routes
 
 ## Features
 

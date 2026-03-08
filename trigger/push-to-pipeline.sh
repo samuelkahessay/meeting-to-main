@@ -84,6 +84,49 @@ verify_remote_lock_file() {
   gh api "repos/$repo/contents/$path?ref=main" >/dev/null || fail "Compiled lock file missing on remote: $path"
 }
 
+json_array_from_csv() {
+  printf '%s\n' "${1:-}" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | awk 'NF && !seen[$0]++' | jq -R . | jq -s .
+}
+
+configure_branch_protection() {
+  local repo=$1
+  local required_checks_json
+
+  required_checks_json=$(json_array_from_csv "$PIPELINE_REQUIRED_STATUS_CHECKS")
+
+  gh api "repos/$repo/branches/main/protection" --method PUT \
+    --input - >/dev/null <<PROTECTION
+{
+  "required_status_checks": {
+    "strict": false,
+    "contexts": $required_checks_json
+  },
+  "enforce_admins": false,
+  "required_pull_request_reviews": {
+    "dismiss_stale_reviews": false,
+    "require_code_owner_reviews": false,
+    "required_approving_review_count": 1
+  },
+  "restrictions": null
+}
+PROTECTION
+}
+
+verify_branch_protection() {
+  local repo=$1
+  local required_reviews
+  local required_check
+
+  required_reviews=$(gh api "repos/$repo/branches/main/protection" --jq '.required_pull_request_reviews.required_approving_review_count // 0')
+  [ "$required_reviews" -ge 1 ] || fail "Branch protection is missing the required pull request review gate on $repo"
+
+  while IFS= read -r required_check; do
+    [ -n "$required_check" ] || continue
+    gh api "repos/$repo/branches/main/protection/required_status_checks" --jq '.contexts[]' | grep -Fx -- "$required_check" >/dev/null || \
+      fail "Branch protection required status check '$required_check' is missing on $repo"
+  done < <(printf '%s\n' "$PIPELINE_REQUIRED_STATUS_CHECKS" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+}
+
 PRD_FILE="${1:-}"
 [ -n "$PRD_FILE" ] || fail "Usage: push-to-pipeline.sh <prd-file>"
 [ -f "$PRD_FILE" ] || fail "PRD file not found: $PRD_FILE"
@@ -110,6 +153,7 @@ GH_OWNER="${PIPELINE_OWNER:-samuelkahessay}"
 PIPELINE_APP_ID="${PIPELINE_APP_ID:-2995372}"
 PIPELINE_BOT_LOGIN="${PIPELINE_BOT_LOGIN:-prd-to-prod-pipeline}"
 PIPELINE_VISIBILITY="${PIPELINE_VISIBILITY:-public}"
+PIPELINE_REQUIRED_STATUS_CHECKS="${PIPELINE_REQUIRED_STATUS_CHECKS:-review,Node CI / check-profile,Node CI / build-and-test}"
 PIPELINE_APP_PRIVATE_KEY_FILE="${PIPELINE_APP_PRIVATE_KEY_FILE:-$HOME/Downloads/prd-to-prod-pipeline.2026-03-02.private-key.pem}"
 VISIBILITY_FLAG=$(visibility_flag "$PIPELINE_VISIBILITY")
 
@@ -177,6 +221,15 @@ gh api "repos/$REPO/actions/permissions/workflow" --method PUT \
   -F "can_approve_pull_request_reviews=true" >/dev/null
 verify_actions_permissions "$REPO"
 log "Actions PR permissions configured"
+
+log "Enabling auto-merge and branch protection on $REPO..."
+gh api "repos/$REPO" --method PATCH -F allow_auto_merge=true >/dev/null
+configure_branch_protection "$REPO"
+
+ACTUAL_AUTO_MERGE=$(gh api "repos/$REPO" --jq '.allow_auto_merge')
+[ "$ACTUAL_AUTO_MERGE" = "true" ] || fail "Auto-merge is not enabled on $REPO"
+verify_branch_protection "$REPO"
+log "Auto-merge and branch protection configured"
 
 log "Configuring pipeline variables and secrets on $REPO..."
 gh variable set PIPELINE_APP_ID --repo "$REPO" --body "$PIPELINE_APP_ID"
