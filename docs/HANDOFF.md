@@ -19,8 +19,9 @@
 
 - **`meeting-to-main`**
   - `origin/main` already includes `ac253b5` (`fix: harden smoke bootstrap flow`)
-  - one local uncommitted change remains in `trigger/push-to-pipeline.sh`
-  - that change only updates the default `PIPELINE_APP_PRIVATE_KEY_FILE` fallback from the TCC-blocked `~/Downloads/...pem` path to the readable config path: `$HOME/.config/prd-to-prod/prd-to-prod-pipeline.2026-03-02.private-key.pem`
+  - working tree is clean
+  - branch is **ahead of `origin/main` by 1 local commit**: `3372fb6` `docs: capture pause checkpoint`
+  - that local commit includes the `trigger/push-to-pipeline.sh` fallback change that moves the default `PIPELINE_APP_PRIVATE_KEY_FILE` path from the TCC-blocked `~/Downloads/...pem` path to the readable config path: `$HOME/.config/prd-to-prod/prd-to-prod-pipeline.2026-03-02.private-key.pem`
 - **`prd-to-prod-template`**
   - working tree is clean
   - branch is **ahead of `origin/main` by 4 local commits**
@@ -42,12 +43,12 @@
 - The latest smoke repo still exists for evidence: `samuelkahessay/pipeline-smoke-canary-smoke-20260308151418`
 - Issue `#2` in that repo is the generated failure issue: `[aw] PRD Decomposer failed (pre-agent)`
 - The 4 template commits are local only and have **not** been pushed
-- The key-path fallback edit in `meeting-to-main` has **not** been committed
+- The latest `meeting-to-main` handoff/key-path commit has **not** been pushed
 
 ### Exact next step when resuming
 
 1. Restore Copilot quota or switch to credentials with quota.
-2. Decide whether to keep and commit the local `meeting-to-main/trigger/push-to-pipeline.sh` key-path fallback change.
+2. Decide whether to push the local `meeting-to-main` handoff/key-path commit `3372fb6`.
 3. Decide whether to push the 4 local `prd-to-prod-template` commits before further smoke runs.
 4. Rerun one fresh smoke using:
 
@@ -67,7 +68,8 @@ PIPELINE_SMOKE_TIMEOUT_SECONDS=1800 \
 
 **Date:** 2026-03-08
 **Status:** PRD extraction, repo bootstrap, and live deploy are verified; the March 7, 2026 autonomous merge lane was not fully hands-off. This repo now contains the v1 autonomy hardening changes and smoke-run tooling.
-**Last commit:** `0df7930` on `main` before the current hardening pass
+**Last local commit:** `3372fb6` (`docs: capture pause checkpoint`)
+**Last pushed commit on `main`:** `ac253b5` (`fix: harden smoke bootstrap flow`)
 
 ---
 
