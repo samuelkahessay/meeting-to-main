@@ -20,6 +20,17 @@ validate_prd() {
   grep -q "^## Non-Functional" "$prd"      || { echo "FAIL: Missing Non-Functional Requirements section"; ((errors++)); }
   grep -q "^## Out of Scope" "$prd"        || { echo "FAIL: Missing Out of Scope section"; ((errors++)); }
 
+  # Tech stack guard — reject PRDs with unsupported stacks
+  local blocked_stacks=("C#" ".NET" "dotnet" "Django" "Flask" "Rails" "Ruby" "Java" "Spring" "Go " "Golang" "Rust" "PHP" "Laravel")
+  local tech_stack_section
+  tech_stack_section=$(sed -n '/^## Tech Stack/,/^## /p' "$prd" | head -20)
+  for blocked in "${blocked_stacks[@]}"; do
+    if echo "$tech_stack_section" | grep -qi "$blocked"; then
+      echo "FAIL: Unsupported tech stack detected: '$blocked' — pipeline only supports Node.js/TypeScript"
+      ((errors++))
+    fi
+  done
+
   if [ "$errors" -gt 0 ]; then
     echo ""
     echo "PRD validation failed with $errors error(s)"

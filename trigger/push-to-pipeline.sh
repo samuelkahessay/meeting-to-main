@@ -53,6 +53,16 @@ else
   echo "[meeting-to-main] WARNING: COPILOT_GITHUB_TOKEN not set — repo-assist agents will fail"
 fi
 
+# Vercel deployment secrets
+if [ -n "${VERCEL_TOKEN:-}" ]; then
+  gh secret set VERCEL_TOKEN --repo "$REPO" --body "$VERCEL_TOKEN"
+  gh secret set VERCEL_ORG_ID --repo "$REPO" --body "$VERCEL_ORG_ID"
+  echo "      Vercel secrets configured"
+else
+  echo "[meeting-to-main] WARNING: VERCEL_TOKEN not set — auto-deploy to Vercel will fail"
+  echo "         Set it via: export VERCEL_TOKEN=<your-vercel-token>"
+fi
+
 # Compile gh-aw agent workflows (templates don't include .lock.yml files)
 echo "[meeting-to-main] Compiling agent workflows..."
 CLONE_DIR=$(mktemp -d)

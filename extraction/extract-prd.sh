@@ -8,6 +8,16 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 echo "=== meeting-to-main ==="
 echo ""
 
+# Platform constraints — controls which tech stacks the PRD can use
+DEPLOY_PLATFORM="${DEPLOY_PLATFORM:-Vercel}"
+ALLOWED_STACKS="${ALLOWED_STACKS:-"- Node.js + TypeScript + Express (API routes or standalone server)
+- Node.js + TypeScript + Next.js (full-stack with React)
+- Node.js + TypeScript + Hono (lightweight API)
+- Testing: Vitest
+- Storage: In-memory, SQLite, or Postgres (via Prisma)"}"
+
+export DEPLOY_PLATFORM ALLOWED_STACKS
+
 # Step 1: WorkIQ extraction (or mock)
 # Use live WorkIQ by setting WORKIQ_LIVE=true:
 #   WORKIQ_LIVE=true ./extraction/extract-prd.sh "my meeting query"
@@ -25,10 +35,13 @@ echo "[2/3] Extracting PRD from meeting transcript..."
 
 # Assemble prompt safely using python to avoid bash expansion issues with $, \, etc.
 FULL_PROMPT=$(python3 -c "
-import sys
+import sys, os
 prompt = open('$PROJECT_ROOT/extraction/prompt.md').read()
 workiq = sys.stdin.read()
-print(prompt.replace('{workiq_output}', workiq))
+prompt = prompt.replace('{deploy_platform}', os.environ.get('DEPLOY_PLATFORM', 'Vercel'))
+prompt = prompt.replace('{allowed_stacks}', os.environ.get('ALLOWED_STACKS', 'Node.js + TypeScript'))
+prompt = prompt.replace('{workiq_output}', workiq)
+print(prompt)
 " <<< "$WORKIQ_OUTPUT")
 
 # Use OpenRouter API (Claude Sonnet 4.6) instead of claude CLI to avoid nesting issues
