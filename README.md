@@ -8,7 +8,7 @@ source ~/.env && ./extraction/extract-prd.sh
 
 One command takes a Teams meeting transcript, extracts a structured PRD using Claude, spins up a fresh repo, validates the pipeline bootstrap, and triggers the implementation lane — then **auto-deploys to Vercel** once the template repo's autonomous auth chain is healthy.
 
-**Live proof:** [team-availability-service.vercel.app](https://team-availability-service.vercel.app) and [to-do-app-with-weather-and-notifica.vercel.app](https://to-do-app-with-weather-and-notifica.vercel.app). The latter was produced from a real WorkIQ transcript, but several later PRs were manually merged during the March 7, 2026 run.
+**Live proof:** [team-availability-service.vercel.app](https://team-availability-service.vercel.app) — fully autonomous end-to-end run. A second app ([to-do-app](https://to-do-app-with-weather-and-notifica.vercel.app)) was produced from a real WorkIQ transcript; its merge lane required manual recovery during the March 7, 2026 run.
 
 ## How it works
 
@@ -102,5 +102,5 @@ meeting-to-main/
 
 ## Notes
 
-- [`docs/run-log-2026-03-07-live.md`](/Users/skahessay/Documents/Projects/active/meeting-to-main/docs/run-log-2026-03-07-live.md) is the authoritative record of the March 7, 2026 live WorkIQ run.
+- The March 7, 2026 live WorkIQ run log is available in `docs/run-log-2026-03-07-live.md` (not tracked — internal design doc).
 - `docs/run-notes.md` is referenced in older notes but does not exist in this workspace.
