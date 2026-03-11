@@ -1,12 +1,12 @@
 # meeting-to-main
 
-Meeting transcript in. Deployed API out. The March 7, 2026 live run still needed manual recovery in the merge lane; this repo now includes the App-first hardening and smoke-run checks to remove that gap.
+Meeting transcript in. Deployed API out.
 
 ```bash
 source ~/.env && ./extraction/extract-prd.sh
 ```
 
-One command takes a Teams meeting transcript, extracts a structured PRD using Claude, spins up a fresh repo, validates the pipeline bootstrap, and triggers the implementation lane — then **auto-deploys to Vercel** once the template repo's autonomous auth chain is healthy.
+One command pulls a Teams meeting transcript via [WorkIQ](https://github.com/microsoft/workiq) MCP, extracts a structured PRD using Claude, spins up a fresh repo, and triggers the autonomous implementation lane — ending with a **live deploy to Vercel**.
 
 **Live proof:** [team-availability-service.vercel.app](https://team-availability-service.vercel.app) — fully autonomous end-to-end run. A second app ([to-do-app](https://to-do-app-with-weather-and-notifica.vercel.app)) was produced from a real WorkIQ transcript; its merge lane required manual recovery during the March 7, 2026 run.
 
@@ -19,27 +19,27 @@ Teams Meeting → WorkIQ MCP → Claude extracts PRD → New repo from template
 
 The pipeline has three layers, each a directory:
 
-- **`mocks/`** — A realistic 31-turn meeting transcript and WorkIQ prose summary. Swap for live WorkIQ data with `WORKIQ_LIVE=true`.
-- **`extraction/`** — Claude (via OpenRouter) transforms the meeting summary into a validated PRD. Structural checks and tech stack guards catch issues before anything ships.
-- **`trigger/`** — Creates a fresh repo from [`prd-to-prod-template`](https://github.com/samuelkahessay/prd-to-prod-template) or a local template snapshot, provisions secrets/variables (pipeline + Vercel), validates bootstrap state, files the PRD as a `[Pipeline]` issue, comments `/decompose`, and exposes a disposable smoke-run path.
+- **`extraction/`** — Connects to Teams via WorkIQ MCP, pulls a meeting transcript, and has Claude (via OpenRouter) transform it into a validated PRD. Structural checks and tech stack guards catch issues before anything ships.
+- **`trigger/`** — Creates a fresh repo from [`prd-to-prod-template`](https://github.com/samuelkahessay/prd-to-prod-template), provisions secrets/variables (pipeline + Vercel), validates bootstrap state, files the PRD as a `[Pipeline]` issue, and comments `/decompose`.
+- **`mocks/`** — Offline development fixtures (transcript + summary) so the pipeline can be tested without an M365 tenant.
 
 ## Running it
 
-The default path uses mock data — no M365 tenant needed:
+Point it at a Teams meeting and go:
 
 ```bash
 # Prerequisites: OPENROUTER_API_KEY, COPILOT_GITHUB_TOKEN, VERCEL_TOKEN,
 # VERCEL_ORG_ID, PIPELINE_APP_PRIVATE_KEY in ~/.env
-# gh CLI authenticated
+# gh CLI authenticated, WorkIQ MCP configured for M365 tenant
 source ~/.env
-./extraction/extract-prd.sh
+WORKIQ_LIVE=true ./extraction/extract-prd.sh "Product Sync March 3rd"
 ```
 
-For live Teams data via [WorkIQ](https://github.com/microsoft/workiq) MCP:
+For offline development (no M365 tenant needed):
 
 ```bash
 source ~/.env
-WORKIQ_LIVE=true ./extraction/extract-prd.sh "Product Sync March 3rd"
+./extraction/extract-prd.sh
 ```
 
 For a disposable autonomy smoke run against a template snapshot:
@@ -53,7 +53,7 @@ PIPELINE_TEMPLATE_SOURCE_DIR=/path/to/prd-to-prod-template ./trigger/smoke-pipel
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `WORKIQ_LIVE` | `false` | Set `true` to use live M365 meeting data |
+| `WORKIQ_LIVE` | — | Set `true` for live Teams data via WorkIQ MCP. Omit to use offline fixtures. |
 | `DEPLOY_PLATFORM` | `Vercel` | Target deployment platform (injected into PRD prompt) |
 | `ALLOWED_STACKS` | Node.js/TS variants | Allowed tech stacks for PRD generation |
 | `PIPELINE_APP_ID` | `2995372` | GitHub App ID used for autonomous write actions |
@@ -66,35 +66,34 @@ PIPELINE_TEMPLATE_SOURCE_DIR=/path/to/prd-to-prod-template ./trigger/smoke-pipel
 | `VERCEL_TOKEN` | — | Vercel API token for auto-deploy |
 | `VERCEL_ORG_ID` | — | Vercel org/team identifier used during bootstrap |
 
-## What's real vs. mocked
+## Pipeline stages
 
-| Component | Default (mock) | Live (`WORKIQ_LIVE=true`) |
-|-----------|---------------|--------------------------|
-| Meeting data | Static fixture | Live via WorkIQ MCP + M365 |
-| PRD extraction | **Real** — Claude generates from transcript | Same |
-| Validation | **Real** — structural + tech stack checks | Same |
-| Repo creation | **Real** — `gh repo create --template` | Same |
-| Implementation | **Real** — Copilot agent writes code + tests | Same |
-| Deployment | **Real** — auto-deploy to Vercel on merge | Same |
-
-The only mock is the input by default. Everything from PRD extraction onward is the real pipeline, but the March 7, 2026 live run exposed auth-chain gaps that required manual merges; those gaps are what the current hardening work addresses.
+| Stage | What happens |
+|-------|-------------|
+| Meeting data | Pulled live from Teams via WorkIQ MCP (or offline fixtures for development) |
+| PRD extraction | Claude generates a structured PRD from the transcript |
+| Validation | Structural + tech stack checks before anything ships |
+| Repo creation | `gh repo create --template` from [prd-to-prod-template](https://github.com/samuelkahessay/prd-to-prod-template) |
+| Implementation | Copilot agent decomposes PRD into issues, writes code + tests, opens PRs |
+| Review + merge | Autonomous review agent → auto-merge on approval |
+| Deployment | Auto-deploy to Vercel on merge |
 
 ## Project structure
 
 ```
 meeting-to-main/
-├── mocks/                        # WorkIQ mock layer
-│   ├── transcript.json           # Realistic 31-turn meeting transcript
-│   └── workiq-response.txt       # Prose meeting summary (pipeline input)
+├── mocks/                        # Offline development fixtures
+│   ├── transcript.json           # Sample 31-turn meeting transcript
+│   └── workiq-response.txt       # Sample meeting summary
 ├── extraction/                   # PRD extraction layer
-│   ├── extract-prd.sh            # Entry point — chains all three layers
+│   ├── extract-prd.sh            # Entry point — pulls transcript, extracts PRD, triggers pipeline
 │   ├── prompt.md                 # LLM prompt with platform constraints
 │   ├── validate.sh               # Structural + tech stack validation
-│   ├── workiq-client.ts          # Live WorkIQ MCP client (WORKIQ_LIVE=true)
+│   ├── workiq-client.ts          # WorkIQ MCP client for live Teams data
 │   └── test-fixtures/            # Valid/invalid PRDs for testing
 ├── trigger/                      # Pipeline trigger layer
-│   ├── push-to-pipeline.sh       # Creates repo, validates bootstrap, provisions secrets, triggers /decompose
-│   ├── smoke-pipeline.sh         # Disposable smoke run that waits for PR/review automation
+│   ├── push-to-pipeline.sh       # Creates repo, provisions secrets, validates bootstrap, triggers /decompose
+│   ├── smoke-pipeline.sh         # Disposable end-to-end smoke run
 │   └── smoke-prd.md              # Minimal PRD fixture for smoke runs
 ├── docs/                         # Design docs and plans
 └── README.md
